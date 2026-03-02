@@ -225,6 +225,10 @@ async def health_check(request):
 app = mcp.http_app()
 
 
-if __name__ == "__main__":
+def main():
     # Run the server with HTTP transport
     mcp.run(transport="http", host="0.0.0.0", port=MCP_PORT)
+
+
+if __name__ == "__main__":
+    main()

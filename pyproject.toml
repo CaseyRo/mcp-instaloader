@@ -1,12 +1,18 @@
 [project]
-name = "instaloader-mcp"
+name = "mcp-instaloader"
 version = "0.1.0"
 description = "MCP server for fetching Instagram posts and reels using instaloader"
 readme = "README.md"
 license = {text = "MIT"}
 requires-python = ">=3.10"
 authors = [
-    {name = "Instaloader MCP Server Contributors"}
+    {name = "CaseyRo"}
+]
+keywords = ["mcp", "fastmcp", "instagram", "instaloader"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Programming Language :: Python :: 3",
+  "License :: OSI Approved :: MIT License",
 ]
 dependencies = [
     "fastmcp>=3.0.2,<4.0.0",
@@ -15,13 +21,12 @@ dependencies = [
     "httpx>=0.27.0,<1.0.0",
 ]
 
-[project.optional-dependencies]
-dev = [
-    "pytest>=8.0.0",
-    "pytest-asyncio>=0.23.0",
-    "ruff>=0.9.0",
-    "pre-commit>=3.5.0",
-]
+[project.urls]
+"Homepage" = "https://github.com/CaseyRo/mcp-instaloader"
+"Bug Tracker" = "https://github.com/CaseyRo/mcp-instaloader/issues"
+
+[project.scripts]
+mcp-instaloader = "mcp_instaloader.server:main"
 
 [dependency-groups]
 dev = [
@@ -36,10 +41,10 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src"]
+packages = ["src/mcp_instaloader"]
 
 [tool.hatch.build.targets.sdist]
-include = ["src", "README.md", "LICENSE", "pyproject.toml"]
+include = ["src", "README.md", "pyproject.toml"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -1,4 +1,14 @@
-# Instaloader MCP Server
+# mcp-instaloader
+
+[![PyPI](https://img.shields.io/pypi/v/mcp-instaloader)](https://pypi.org/project/mcp-instaloader/)
+
+## Installation
+
+```bash
+pip install mcp-instaloader
+# or run directly without installing:
+uvx mcp-instaloader
+```
 
 A Model Context Protocol (MCP) server that fetches Instagram posts and reels, extracting their text content as JSON. Built with [FastMCP](https://github.com/jlowin/fastmcp) and the [instaloader](https://github.com/instaloader/instaloader) library, containerized with Docker.
 
@@ -82,7 +92,7 @@ To access private Instagram posts/reels, you'll need to provide a session cookie
 You can create a session inside the container and persist it locally:
 
 ```bash
-docker compose run --rm instaloader-mcp instaloader --login your_username
+docker compose run --rm mcp-instaloader instaloader --login your_username
 ```
 
 This stores the session under `/root/.config/instaloader/session-your_username` in the container. The `docker-compose.yml` file mounts `./instaloader_sessions` to persist these sessions, so you can set:
@@ -178,7 +188,7 @@ Required test URLs:
 ### Build Image
 
 ```bash
-docker build -t instaloader-mcp .
+docker build -t mcp-instaloader .
 ```
 
 ### Run Container
@@ -186,7 +196,7 @@ docker build -t instaloader-mcp .
 ```bash
 docker run -p 3336:3336 \
   -e MCP_PORT=3336 \
-  instaloader-mcp
+  mcp-instaloader
 ```
 
 ### Docker Compose

@@ -1,9 +1,9 @@
 services:
-  instaloader-mcp:
+  mcp-instaloader:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: instaloader-mcp-server
+    container_name: mcp-instaloader
     ports:
       - "${MCP_PORT:-3336}:${MCP_PORT:-3336}"
     environment:
