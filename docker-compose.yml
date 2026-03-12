@@ -7,20 +7,17 @@ services:
     ports:
       - "${MCP_PORT:-3336}:${MCP_PORT:-3336}"
     environment:
-      - MCP_PORT=${MCP_PORT:-3336}
-      - COOKIE_FILE=${COOKIE_FILE:-}
-    env_file:
-      - .env
+      MCP_PORT: ${MCP_PORT:-3336}
+      COOKIE_FILE: ${COOKIE_FILE:-}
     volumes:
-      # Persist instaloader sessions so login works across restarts
-      - ./instaloader_sessions:/home/appuser/.config/instaloader
-      # Mount cookie file if provided (optional)
-      # Uncomment and adjust path if you need to mount a cookie file:
-      # - ./cookies.txt:/app/cookies.txt:ro
+      - instaloader_sessions:/home/appuser/.config/instaloader
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:${MCP_PORT:-3336}/health')"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 10s
+      start_period: 15s
+
+volumes:
+  instaloader_sessions:
