@@ -12,6 +12,7 @@ from instaloader.exceptions import (
 from pydantic import Field
 from starlette.responses import JSONResponse
 
+from .auth import build_auth
 from .instaloader_client import InstaloaderClient
 from .rate_limiter import RateLimitMiddleware
 from .update_checker import check_for_updates
@@ -30,8 +31,18 @@ rate_limiter = RateLimitMiddleware(
     window_seconds=RATE_LIMIT_WINDOW,
 )
 
-# Initialize FastMCP server with middleware
-mcp = FastMCP("mcp-instaloader", middleware=[rate_limiter])
+# Build authentication (only if KEYCLOAK_ISSUER is configured)
+_keycloak_issuer = os.getenv("KEYCLOAK_ISSUER")
+_auth = None
+if _keycloak_issuer:
+    _auth = build_auth(
+        keycloak_issuer=_keycloak_issuer,
+        keycloak_audience=os.getenv("KEYCLOAK_AUDIENCE", "mcp-instaloader"),
+        api_key=os.getenv("MCP_API_KEY") or None,
+    )
+
+# Initialize FastMCP server with middleware and optional auth
+mcp = FastMCP("mcp-instaloader", middleware=[rate_limiter], auth=_auth)
 
 # Get configuration from environment
 MCP_PORT = int(os.getenv("MCP_PORT", "3336"))
