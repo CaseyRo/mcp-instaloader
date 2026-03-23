@@ -15,7 +15,6 @@ from starlette.responses import JSONResponse
 from .auth import build_auth
 from .instaloader_client import InstaloaderClient
 from .rate_limiter import RateLimitMiddleware
-from .update_checker import check_for_updates
 from .url_parser import is_valid_instagram_url
 
 # Load environment variables
@@ -53,32 +52,31 @@ instaloader_client = InstaloaderClient(cookie_file=COOKIE_FILE)
 
 
 @mcp.tool()
-async def fetch_instagram_post(
+async def fetch_instagram_content(
     url: str = Field(
         ...,
         description=(
-            "Instagram post URL (e.g., https://www.instagram.com/p/DRr-n4XER3x/) "
-            "or shortcode (e.g., DRr-n4XER3x)."
+            "Instagram post or reel URL (e.g., https://www.instagram.com/p/DRr-n4XER3x/ "
+            "or https://www.instagram.com/reel/ABC123/) or shortcode (e.g., DRr-n4XER3x)."
         ),
     ),
 ) -> dict:
     """
-    Fetch an Instagram post by URL or shortcode and return its text content as JSON.
+    Fetch an Instagram post or reel by URL or shortcode and return its text content.
 
-    Args:
-        url: Instagram post URL (e.g., "https://www.instagram.com/p/DRr-n4XER3x/")
-             or shortcode (e.g., "DRr-n4XER3x")
+    Automatically handles both posts (/p/) and reels (/reel/) — they use the same
+    underlying Instagram API. You can pass any Instagram content URL or just a shortcode.
 
     Returns:
         Dictionary containing:
-        - text: Post caption/text content
-        - shortcode: Post shortcode
+        - text: Caption/text content
+        - shortcode: Content shortcode
         - author: Author username
         - timestamp: Post timestamp (ISO format)
         - likes: Number of likes
         - comments: Number of comments
-        - is_video: Whether post is a video
-        - update_info: Instaloader version update information
+        - is_video: Whether content is a video
+        - typename: Instagram content type (GraphImage, GraphVideo, GraphSidecar)
     """
     try:
         # Validate URL format
@@ -86,21 +84,14 @@ async def fetch_instagram_post(
             return {
                 "error": "Invalid Instagram URL format",
                 "error_code": "INVALID_URL_FORMAT",
-                "message": f"The provided URL '{url}' is not a valid Instagram URL format. Expected format: https://www.instagram.com/p/{'{shortcode}'}/ or shortcode only.",
+                "message": f"The provided URL '{url}' is not a valid Instagram URL format. Expected: https://www.instagram.com/p/SHORTCODE/ or https://www.instagram.com/reel/SHORTCODE/ or just the shortcode.",
                 "url": url,
             }
 
-        # Fetch post data
-        post_data = await instaloader_client.fetch_post(url)
+        # Fetch content data (posts and reels use the same API)
+        content_data = await instaloader_client.fetch_post(url)
 
-        # Get update information
-        update_info = await check_for_updates()
-
-        # Combine post data with update info
-        return {
-            **post_data,
-            "update_info": update_info,
-        }
+        return content_data
     except LoginRequiredException as e:
         return {
             "error": "Authentication required",
@@ -118,103 +109,16 @@ async def fetch_instagram_post(
         }
     except ValueError as e:
         return {
-            "error": "Post not found",
-            "error_code": "POST_NOT_FOUND",
-            "message": f"{str(e)} The post may have been deleted, made private, or the URL/shortcode is incorrect.",
+            "error": "Content not found",
+            "error_code": "CONTENT_NOT_FOUND",
+            "message": f"{str(e)} The post/reel may have been deleted, made private, or the URL/shortcode is incorrect.",
             "url": url,
         }
     except InstaloaderException as e:
         return {
-            "error": "Error fetching post",
+            "error": "Error fetching content",
             "error_code": "INSTALOADER_ERROR",
-            "message": f"An error occurred while fetching the post: {str(e)}",
-            "url": url,
-        }
-    except Exception as e:
-        return {
-            "error": "Unexpected error",
-            "error_code": "UNEXPECTED_ERROR",
-            "message": f"An unexpected error occurred: {str(e)}",
-            "url": url,
-        }
-
-
-@mcp.tool()
-async def fetch_instagram_reel(
-    url: str = Field(
-        ...,
-        description=(
-            "Instagram reel URL (e.g., https://www.instagram.com/reel/ABC123/) "
-            "or shortcode (e.g., ABC123)."
-        ),
-    ),
-) -> dict:
-    """
-    Fetch an Instagram reel by URL or shortcode and return its text content as JSON.
-
-    Args:
-        url: Instagram reel URL (e.g., "https://www.instagram.com/reel/ABC123/")
-             or shortcode (e.g., "ABC123")
-
-    Returns:
-        Dictionary containing:
-        - text: Reel caption/text content
-        - shortcode: Reel shortcode
-        - author: Author username
-        - timestamp: Reel timestamp (ISO format)
-        - likes: Number of likes
-        - comments: Number of comments
-        - is_video: Always True for reels
-        - update_info: Instaloader version update information
-    """
-    try:
-        # Validate URL format
-        if not is_valid_instagram_url(url):
-            return {
-                "error": "Invalid Instagram URL format",
-                "error_code": "INVALID_URL_FORMAT",
-                "message": f"The provided URL '{url}' is not a valid Instagram URL format. Expected format: https://www.instagram.com/reel/{'{shortcode}'}/ or shortcode only.",
-                "url": url,
-            }
-
-        # Fetch reel data (reels are posts with video content)
-        reel_data = await instaloader_client.fetch_reel(url)
-
-        # Get update information
-        update_info = await check_for_updates()
-
-        # Combine reel data with update info
-        return {
-            **reel_data,
-            "update_info": update_info,
-        }
-    except LoginRequiredException as e:
-        return {
-            "error": "Authentication required",
-            "error_code": "AUTHENTICATION_REQUIRED",
-            "message": f"{str(e)} Please provide a valid session cookie file via COOKIE_FILE environment variable. You can create one by running 'instaloader --login your_username'.",
-            "url": url,
-        }
-    except ConnectionException as e:
-        return {
-            "error": "Network error",
-            "error_code": "NETWORK_ERROR",
-            "message": f"Failed to connect to Instagram: {str(e)}. Please check your internet connection and try again.",
-            "url": url,
-            "retry_hint": "This may be a temporary network issue. Please retry after a few moments.",
-        }
-    except ValueError as e:
-        return {
-            "error": "Reel not found",
-            "error_code": "REEL_NOT_FOUND",
-            "message": f"{str(e)} The reel may have been deleted, made private, or the URL/shortcode is incorrect.",
-            "url": url,
-        }
-    except InstaloaderException as e:
-        return {
-            "error": "Error fetching reel",
-            "error_code": "INSTALOADER_ERROR",
-            "message": f"An error occurred while fetching the reel: {str(e)}",
+            "message": f"An error occurred while fetching the content: {str(e)}",
             "url": url,
         }
     except Exception as e:
