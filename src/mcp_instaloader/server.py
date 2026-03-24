@@ -137,12 +137,15 @@ async def health_check(request):
 
 
 # ASGI app for production deployment with uvicorn
-app = mcp.http_app()
+# stateless_http=True: each JSON-RPC POST is self-contained (no session negotiation).
+# Required for simple HTTP callers (Sammler mcpCall pattern) that do not implement
+# the full MCP SSE session handshake. Same pattern as mcp-ytdlp.
+app = mcp.http_app(stateless_http=True)
 
 
 def main():
     # Run the server with HTTP transport
-    mcp.run(transport="http", host="0.0.0.0", port=MCP_PORT)
+    mcp.run(transport="http", host="0.0.0.0", port=MCP_PORT, stateless_http=True)
 
 
 if __name__ == "__main__":
