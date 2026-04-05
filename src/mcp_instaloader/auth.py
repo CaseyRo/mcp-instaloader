@@ -1,81 +1,40 @@
 """Authentication for the MCP server.
 
-Supports two authentication modes simultaneously via MultiAuth:
-
-1. **Keycloak JWT** (for OAuth clients authenticated via Keycloak):
-   Validates JWT tokens issued by a Keycloak realm using the realm's
-   JWKS endpoint for key discovery and rotation.
-
-2. **Bearer token** (for Claude Code, n8n, and other direct clients):
-   Simple static API key validation via Authorization: Bearer <key>.
+Uses OIDCProxy to proxy the OAuth flow to Keycloak using pre-registered
+client credentials. Claude.ai (and Claude Code through it) authenticates
+via the standard authorization_code flow.
 
 Authentication is optional — only enabled when KEYCLOAK_ISSUER is set.
 This keeps local development frictionless while securing production deployments.
 """
 
-import hmac
 import logging
 
-from fastmcp.server.auth import (
-    AccessToken,
-    JWTVerifier,
-    MultiAuth,
-    TokenVerifier,
-)
+from fastmcp.server.auth.oidc_proxy import OIDCProxy
 
 logger = logging.getLogger(__name__)
 
 
-class BearerTokenVerifier(TokenVerifier):
-    """Validates incoming requests against a static API key.
-
-    Uses constant-time comparison to prevent timing attacks.
-    """
-
-    def __init__(self, api_key: str):
-        super().__init__()
-        self._api_key = api_key
-
-    async def verify_token(self, token: str) -> AccessToken | None:
-        if not hmac.compare_digest(token, self._api_key):
-            logger.warning("Rejected request with invalid API key")
-            return None
-
-        return AccessToken(
-            token=token,
-            client_id="mcp-instaloader-bearer",
-            scopes=["all"],
-        )
-
-
-def build_auth(
-    *,
+def create_auth(
+    base_url: str,
     keycloak_issuer: str,
-    keycloak_audience: str = "mcp-instaloader",
-    api_key: str | None = None,
-) -> MultiAuth:
-    """Build a MultiAuth provider combining Keycloak JWT + optional Bearer token.
+    keycloak_client_id: str,
+    keycloak_client_secret: str,
+) -> OIDCProxy:
+    """Create the OIDCProxy authentication provider.
 
     Args:
+        base_url: Public URL of this server (e.g. https://mcp-instaloader.example.com).
         keycloak_issuer: Keycloak realm issuer URL
             (e.g. https://auth.cdit-works.de/realms/cdit-mcp).
-        keycloak_audience: Expected JWT audience claim.
-        api_key: Optional static API key for bearer token auth.
-
-    Returns:
-        MultiAuth instance ready to pass to FastMCP(auth=...).
+        keycloak_client_id: Pre-registered Keycloak client ID.
+        keycloak_client_secret: Keycloak client secret.
     """
-    # Keycloak exposes JWKS at {issuer}/protocol/openid-connect/certs
-    jwks_uri = f"{keycloak_issuer.rstrip('/')}/protocol/openid-connect/certs"
+    config_url = f"{keycloak_issuer}/.well-known/openid-configuration"
 
-    jwt_verifier = JWTVerifier(
-        jwks_uri=jwks_uri,
-        issuer=keycloak_issuer,
-        audience=keycloak_audience,
+    return OIDCProxy(
+        config_url=config_url,
+        client_id=keycloak_client_id,
+        client_secret=keycloak_client_secret,
+        base_url=base_url,
     )
-
-    verifiers: list[TokenVerifier] = []
-    if api_key:
-        verifiers.append(BearerTokenVerifier(api_key))
-
-    return MultiAuth(server=jwt_verifier, verifiers=verifiers)
