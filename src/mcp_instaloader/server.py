@@ -55,8 +55,7 @@ async def fetch_instagram_content(
         ),
     ),
 ) -> dict:
-    """
-    Fetch an Instagram post or reel by URL or shortcode and return its text content.
+    """[media] Fetch an Instagram post or reel by URL or shortcode and return its text content.
 
     Automatically handles both posts (/p/) and reels (/reel/) — they use the same
     underlying Instagram API. You can pass any Instagram content URL or just a shortcode.
