@@ -139,7 +139,7 @@ app = mcp.http_app(stateless_http=True)
 
 def main():
     # Run the server with HTTP transport
-    mcp.run(transport="http", host="0.0.0.0", port=MCP_PORT, stateless_http=True)
+    mcp.run(transport="streamable-http", host="0.0.0.0", port=MCP_PORT)
 
 
 if __name__ == "__main__":
