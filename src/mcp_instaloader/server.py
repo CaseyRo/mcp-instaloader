@@ -12,7 +12,7 @@ from instaloader.exceptions import (
 from pydantic import Field
 from starlette.responses import JSONResponse
 
-from .auth import create_auth
+from .auth import BearerTokenVerifier
 from .instaloader_client import InstaloaderClient
 from .rate_limiter import RateLimitMiddleware
 from .url_parser import is_valid_instagram_url
@@ -30,18 +30,9 @@ rate_limiter = RateLimitMiddleware(
     window_seconds=RATE_LIMIT_WINDOW,
 )
 
-# Build authentication (only if KEYCLOAK_ISSUER is configured)
-_keycloak_issuer = os.getenv("KEYCLOAK_ISSUER")
-_auth = None
-if _keycloak_issuer:
-    _keycloak_client_secret = os.getenv("KEYCLOAK_CLIENT_SECRET")
-    if _keycloak_client_secret:
-        _auth = create_auth(
-            base_url=os.getenv("MCP_BASE_URL", "https://mcp-instaloader.cdit-dev.de"),
-            keycloak_issuer=_keycloak_issuer,
-            keycloak_client_id=os.getenv("KEYCLOAK_CLIENT_ID", "mcp-instaloader"),
-            keycloak_client_secret=_keycloak_client_secret,
-        )
+# Build authentication (bearer token via MCP_API_KEY)
+_api_key = os.getenv("MCP_API_KEY", "")
+_auth = BearerTokenVerifier(api_key=_api_key) if _api_key else None
 
 # Initialize FastMCP server with middleware and optional auth
 mcp = FastMCP("mcp-instaloader", middleware=[rate_limiter], auth=_auth)
