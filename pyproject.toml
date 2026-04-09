@@ -1,6 +1,6 @@
 [project]
 name = "mcp-instaloader"
-version = "0.1.0"
+version = "0.2.0"
 description = "MCP server for fetching Instagram posts and reels using instaloader"
 readme = "README.md"
 license = {text = "MIT"}
@@ -15,7 +15,7 @@ classifiers = [
   "License :: OSI Approved :: MIT License",
 ]
 dependencies = [
-    "fastmcp>=3.1.0,<4.0.0",
+    "fastmcp>=3.2.2,<4.0.0",
     "instaloader>=4.10",
     "python-dotenv>=1.0.0",
     "httpx>=0.28.0,<1.0.0",

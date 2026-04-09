@@ -57,6 +57,10 @@ async def fetch_instagram_content(
 ) -> dict:
     """[media] Fetch an Instagram post or reel by URL or shortcode and return its text content.
 
+    Disambiguation: This tool fetches text/caption content from Instagram posts. For post
+    metadata (likes, comments, media URLs) across multiple platforms, use zernio's
+    research_download_post instead.
+
     Automatically handles both posts (/p/) and reels (/reel/) — they use the same
     underlying Instagram API. You can pass any Instagram content URL or just a shortcode.
 
