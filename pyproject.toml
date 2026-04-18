@@ -15,7 +15,7 @@ classifiers = [
   "License :: OSI Approved :: MIT License",
 ]
 dependencies = [
-    "fastmcp>=3.2.2,<4.0.0",
+    "fastmcp>=3.2.4",
     "instaloader>=4.10",
     "python-dotenv>=1.0.0",
     "httpx>=0.28.0,<1.0.0",

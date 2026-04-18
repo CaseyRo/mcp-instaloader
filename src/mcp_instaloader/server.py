@@ -30,8 +30,14 @@ rate_limiter = RateLimitMiddleware(
     window_seconds=RATE_LIMIT_WINDOW,
 )
 
-# Build authentication (bearer token via MCP_API_KEY)
+# Build authentication (bearer token via MCP_API_KEY). Fail-fast in HTTP mode.
 _api_key = os.getenv("MCP_API_KEY", "")
+_transport = os.getenv("MCP_TRANSPORT", "streamable-http")
+if _transport in ("http", "streamable-http") and not _api_key:
+    raise SystemExit(
+        "MCP_API_KEY is required in HTTP mode. Refusing to start "
+        "an unauthenticated server."
+    )
 _auth = BearerTokenVerifier(api_key=_api_key) if _api_key else None
 
 # Initialize FastMCP server with middleware and optional auth
@@ -141,8 +147,14 @@ app = mcp.http_app(stateless_http=True)
 
 
 def main():
-    # Run the server with HTTP transport
-    mcp.run(transport="streamable-http", host="0.0.0.0", port=MCP_PORT)
+    # Run the server with HTTP transport. stateless_http=True matches the
+    # http_app() construction above — no orphaned SSE sessions.
+    mcp.run(
+        transport="streamable-http",
+        host="0.0.0.0",
+        port=MCP_PORT,
+        stateless_http=True,
+    )
 
 
 if __name__ == "__main__":
