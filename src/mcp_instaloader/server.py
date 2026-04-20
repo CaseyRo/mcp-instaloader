@@ -57,18 +57,20 @@ async def fetch_instagram_content(
         ...,
         description=(
             "Instagram post or reel URL (e.g., https://www.instagram.com/p/DRr-n4XER3x/ "
-            "or https://www.instagram.com/reel/ABC123/) or shortcode (e.g., DRr-n4XER3x)."
+            "or https://www.instagram.com/reel/ABC123/), a shortcode (e.g., DRr-n4XER3x), "
+            "or a numeric media_id (e.g., 17966020298908086 — the shape IG/Zernio "
+            "webhook attachments carry)."
         ),
     ),
 ) -> dict:
-    """[media] Fetch an Instagram post or reel by URL or shortcode and return its text content.
+    """[media] Fetch an Instagram post or reel and return caption + media URLs.
 
-    Disambiguation: This tool fetches text/caption content from Instagram posts. For post
-    metadata (likes, comments, media URLs) across multiple platforms, use zernio's
-    research_download_post instead.
+    Disambiguation: This tool fetches text/caption content plus the creator-curated
+    cover image (display_url) and, for videos, the mp4 URL. For cross-platform post
+    metadata, use zernio's research_download_post.
 
     Automatically handles both posts (/p/) and reels (/reel/) — they use the same
-    underlying Instagram API. You can pass any Instagram content URL or just a shortcode.
+    underlying Instagram API. Accepts full URLs, bare shortcodes, or numeric media_ids.
 
     Returns:
         Dictionary containing:
@@ -80,14 +82,20 @@ async def fetch_instagram_content(
         - comments: Number of comments
         - is_video: Whether content is a video
         - typename: Instagram content type (GraphImage, GraphVideo, GraphSidecar)
+        - display_url: Creator-curated cover image URL (for reels: the chosen
+          poster frame, not a freeze frame). Always present for public posts.
+        - video_url: mp4 URL for GraphVideo/reels; null otherwise.
     """
     try:
-        # Validate URL format
+        # Validate URL / shortcode / media_id format
         if not is_valid_instagram_url(url):
             return {
                 "error": "Invalid Instagram URL format",
                 "error_code": "INVALID_URL_FORMAT",
-                "message": f"The provided URL '{url}' is not a valid Instagram URL format. Expected: https://www.instagram.com/p/SHORTCODE/ or https://www.instagram.com/reel/SHORTCODE/ or just the shortcode.",
+                "message": (
+                    f"The provided URL '{url}' is not a valid Instagram URL, "
+                    "shortcode, or numeric media_id."
+                ),
                 "url": url,
             }
 

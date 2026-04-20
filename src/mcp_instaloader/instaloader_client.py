@@ -13,7 +13,36 @@ from instaloader.exceptions import (
     ProfileNotExistsException,
 )
 
-from .url_parser import extract_shortcode
+from .url_parser import extract_shortcode, is_numeric_media_id
+
+
+def _post_to_dict(post: Post) -> dict[str, Any]:
+    """Serialize a Post (or Reel — both use the same class) into the
+    MCP's public return shape.
+
+    ``display_url`` is the creator-curated cover image. For GraphImage it's
+    the image itself; for GraphVideo (reels) it's the creator-chosen
+    poster frame that instaloader extracts from the GraphQL response —
+    never a random still. ``video_url`` is the mp4 URL for videos only.
+    """
+    caption = post.caption if post.caption else ""
+    # `post.url` is the canonical media URL: image for GraphImage, poster
+    # frame for GraphVideo. `getattr` with fallback because instaloader
+    # occasionally shifts these attributes across minor versions.
+    display_url = getattr(post, "url", None)
+    video_url = getattr(post, "video_url", None) if post.is_video else None
+    return {
+        "shortcode": post.shortcode,
+        "text": caption,
+        "author": post.owner_username,
+        "timestamp": post.date_utc.isoformat() if post.date_utc else None,
+        "likes": post.likes,
+        "comments": post.comments,
+        "is_video": post.is_video,
+        "typename": post.typename,
+        "display_url": display_url,
+        "video_url": video_url,
+    }
 
 
 class InstaloaderClient:
@@ -109,48 +138,50 @@ class InstaloaderClient:
 
     async def fetch_post(self, url_or_shortcode: str) -> dict[str, Any]:
         """
-        Fetch an Instagram post by URL or shortcode.
+        Fetch an Instagram post by URL, shortcode, or numeric media_id.
+
+        The numeric media_id path exists because IG's webhook-style payloads
+        (e.g. Zernio's ``ig_reel`` attachments) expose a numeric
+        ``reel_video_id`` / asset_id rather than a shortcode.
 
         Args:
-            url_or_shortcode: Instagram post URL or shortcode
+            url_or_shortcode: Instagram post URL, shortcode, or numeric media_id
 
         Returns:
-            Dictionary with post data including text and metadata
+            Dictionary with post data including caption, author, and the
+            creator-curated ``display_url`` / ``video_url``.
 
         Raises:
-            ValueError: If URL is invalid
-            InstaloaderException: If post cannot be fetched
+            ValueError: If the input matches no known IG identifier shape
+            InstaloaderException: If the post cannot be fetched
             LoginRequiredException: If authentication is required for private content
         """
+        media_id: int | None = None
         shortcode = extract_shortcode(url_or_shortcode)
         if not shortcode:
-            raise ValueError(f"Invalid Instagram URL or shortcode: {url_or_shortcode}")
+            if is_numeric_media_id(url_or_shortcode):
+                media_id = int(url_or_shortcode.strip().strip("/"))
+            else:
+                raise ValueError(
+                    f"Invalid Instagram URL, shortcode, or media_id: {url_or_shortcode}"
+                )
 
-        # Run blocking instaloader operations in a thread pool
+        identifier = shortcode if shortcode else str(media_id)
+
         def _fetch_post_sync():
             try:
-                post = Post.from_shortcode(self.loader.context, shortcode)
-
-                # Extract text content
-                caption = post.caption if post.caption else ""
-
-                return {
-                    "shortcode": post.shortcode,
-                    "text": caption,
-                    "author": post.owner_username,
-                    "timestamp": post.date_utc.isoformat() if post.date_utc else None,
-                    "likes": post.likes,
-                    "comments": post.comments,
-                    "is_video": post.is_video,
-                    "typename": post.typename,
-                }
+                if media_id is not None:
+                    post = Post.from_mediaid(self.loader.context, media_id)
+                else:
+                    post = Post.from_shortcode(self.loader.context, shortcode)
+                return _post_to_dict(post)
             except LoginRequiredException:
                 raise LoginRequiredException(
                     "This post is private and requires authentication. "
                     "Please provide a valid session cookie file via COOKIE_FILE environment variable."
                 ) from None
             except ProfileNotExistsException:
-                raise ValueError(f"Post not found: {shortcode}") from None
+                raise ValueError(f"Post not found: {identifier}") from None
             except ConnectionException as e:
                 raise ConnectionException(
                     f"Network error while fetching post: {e!s}"
@@ -158,7 +189,6 @@ class InstaloaderClient:
             except InstaloaderException as e:
                 raise InstaloaderException(f"Error fetching post: {e!s}") from e
 
-        # Run in executor to avoid blocking the event loop
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(None, _fetch_post_sync)
 
