@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.2.7] - 2026-04-20
+
+- refactor(config): extract Settings with pydantic-settings, add tests
+
+
 ## [0.2.5] - 2026-04-20
 
 - chore(pkg): add __main__.py and py.typed per MCP Server Standards
