@@ -10,6 +10,10 @@ services:
       MCP_PORT: ${MCP_PORT:-3336}
       COOKIE_FILE: ${COOKIE_FILE:-}
       MCP_API_KEY: ${MCP_API_KEY:-}
+      TRANSPORT: http
+      HOST: 0.0.0.0
+      RATE_LIMIT_REQUESTS: ${RATE_LIMIT_REQUESTS:-10}
+      RATE_LIMIT_WINDOW: ${RATE_LIMIT_WINDOW:-60}
     volumes:
       - instaloader_sessions:/home/appuser/.config/instaloader
     restart: unless-stopped

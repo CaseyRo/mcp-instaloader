@@ -1,7 +1,5 @@
 """FastMCP server for Instagram content fetching."""
 
-import os
-
 from dotenv import load_dotenv
 from fastmcp import FastMCP
 from instaloader.exceptions import (
@@ -13,42 +11,26 @@ from pydantic import Field
 from starlette.responses import JSONResponse
 
 from .auth import BearerTokenVerifier
+from .config import settings
 from .instaloader_client import InstaloaderClient
 from .rate_limiter import RateLimitMiddleware
 from .url_parser import is_valid_instagram_url
 
-# Load environment variables
+# load_dotenv runs after Settings() has read env; kept for dev-mode .env support
+# in case settings picks up late-loaded values on module reimport.
 load_dotenv()
 
-# Get rate limit configuration from environment
-RATE_LIMIT_REQUESTS = int(os.getenv("RATE_LIMIT_REQUESTS", "10"))
-RATE_LIMIT_WINDOW = int(os.getenv("RATE_LIMIT_WINDOW", "60"))
-
-# Initialize rate limiting middleware
 rate_limiter = RateLimitMiddleware(
-    requests_per_window=RATE_LIMIT_REQUESTS,
-    window_seconds=RATE_LIMIT_WINDOW,
+    requests_per_window=settings.rate_limit_requests,
+    window_seconds=settings.rate_limit_window,
 )
 
-# Build authentication (bearer token via MCP_API_KEY). Fail-fast in HTTP mode.
-_api_key = os.getenv("MCP_API_KEY", "")
-_transport = os.getenv("MCP_TRANSPORT", "streamable-http")
-if _transport in ("http", "streamable-http") and not _api_key:
-    raise SystemExit(
-        "MCP_API_KEY is required in HTTP mode. Refusing to start "
-        "an unauthenticated server."
-    )
+_api_key = settings.mcp_api_key.get_secret_value()
 _auth = BearerTokenVerifier(api_key=_api_key) if _api_key else None
 
-# Initialize FastMCP server with middleware and optional auth
 mcp = FastMCP("mcp-instaloader", middleware=[rate_limiter], auth=_auth)
 
-# Get configuration from environment
-MCP_PORT = int(os.getenv("MCP_PORT", "3336"))
-COOKIE_FILE = os.getenv("COOKIE_FILE")
-
-# Initialize instaloader client
-instaloader_client = InstaloaderClient(cookie_file=COOKIE_FILE)
+instaloader_client = InstaloaderClient(cookie_file=settings.cookie_file)
 
 
 @mcp.tool()
@@ -155,12 +137,15 @@ app = mcp.http_app(stateless_http=True)
 
 
 def main():
-    # Run the server with HTTP transport. stateless_http=True matches the
-    # http_app() construction above — no orphaned SSE sessions.
+    if settings.transport == "stdio":
+        mcp.run(transport="stdio")
+        return
+    # stateless_http=True matches the http_app() construction above —
+    # no orphaned SSE sessions.
     mcp.run(
         transport="streamable-http",
-        host="0.0.0.0",
-        port=MCP_PORT,
+        host=settings.host,
+        port=settings.mcp_port,
         stateless_http=True,
     )
 
