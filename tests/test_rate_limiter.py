@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from src.rate_limiter import RateLimitMiddleware
+from mcp_instaloader.rate_limiter import RateLimitMiddleware
 
 
 class TestRateLimitMiddleware:

@@ -4,8 +4,8 @@ from pathlib import Path
 
 import pytest
 
-from src.instaloader_client import InstaloaderClient
-from src.server import mcp
+from mcp_instaloader.instaloader_client import InstaloaderClient
+from mcp_instaloader.server import mcp
 
 
 def read_example_urls() -> list[str]:

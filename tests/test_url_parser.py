@@ -1,6 +1,6 @@
 """Tests for URL parser."""
 
-from src.url_parser import extract_shortcode, is_valid_instagram_url
+from mcp_instaloader.url_parser import extract_shortcode, is_valid_instagram_url
 
 
 def test_extract_shortcode_from_full_url():

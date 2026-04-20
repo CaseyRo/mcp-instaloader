@@ -12,7 +12,7 @@ from instaloader.exceptions import (
     ProfileNotExistsException,
 )
 
-from src.instaloader_client import InstaloaderClient
+from mcp_instaloader.instaloader_client import InstaloaderClient
 
 
 class TestInstaloaderClientInit:
@@ -123,7 +123,7 @@ class TestFetchPost:
     """Test fetch_post with mocked instaloader Post."""
 
     @pytest.mark.asyncio
-    @patch("src.instaloader_client.Post")
+    @patch("mcp_instaloader.instaloader_client.Post")
     async def test_fetch_post_success(self, mock_post_cls):
         """Successful fetch returns expected dict structure."""
         mock_post = MagicMock()
@@ -147,7 +147,7 @@ class TestFetchPost:
         assert result["is_video"] is False
 
     @pytest.mark.asyncio
-    @patch("src.instaloader_client.Post")
+    @patch("mcp_instaloader.instaloader_client.Post")
     async def test_fetch_post_empty_caption(self, mock_post_cls):
         """Post with no caption returns empty string for text."""
         mock_post = MagicMock()
@@ -174,7 +174,7 @@ class TestFetchPost:
             await client.fetch_post("https://example.com/not-instagram")
 
     @pytest.mark.asyncio
-    @patch("src.instaloader_client.Post")
+    @patch("mcp_instaloader.instaloader_client.Post")
     async def test_fetch_post_login_required(self, mock_post_cls):
         """LoginRequiredException propagates with helpful message."""
         mock_post_cls.from_shortcode.side_effect = LoginRequiredException(
@@ -186,7 +186,7 @@ class TestFetchPost:
             await client.fetch_post("https://www.instagram.com/p/PRIV1/")
 
     @pytest.mark.asyncio
-    @patch("src.instaloader_client.Post")
+    @patch("mcp_instaloader.instaloader_client.Post")
     async def test_fetch_post_profile_not_exists(self, mock_post_cls):
         """ProfileNotExistsException becomes ValueError."""
         mock_post_cls.from_shortcode.side_effect = ProfileNotExistsException(
@@ -198,7 +198,7 @@ class TestFetchPost:
             await client.fetch_post("https://www.instagram.com/p/GONE1/")
 
     @pytest.mark.asyncio
-    @patch("src.instaloader_client.Post")
+    @patch("mcp_instaloader.instaloader_client.Post")
     async def test_fetch_post_connection_error(self, mock_post_cls):
         """ConnectionException propagates."""
         mock_post_cls.from_shortcode.side_effect = ConnectionException("Timeout")
@@ -208,7 +208,7 @@ class TestFetchPost:
             await client.fetch_post("https://www.instagram.com/p/ABC123/")
 
     @pytest.mark.asyncio
-    @patch("src.instaloader_client.Post")
+    @patch("mcp_instaloader.instaloader_client.Post")
     async def test_fetch_post_generic_instaloader_error(self, mock_post_cls):
         """InstaloaderException propagates."""
         mock_post_cls.from_shortcode.side_effect = InstaloaderException("Unknown error")
@@ -222,7 +222,7 @@ class TestFetchReel:
     """Test fetch_reel delegates to fetch_post."""
 
     @pytest.mark.asyncio
-    @patch("src.instaloader_client.Post")
+    @patch("mcp_instaloader.instaloader_client.Post")
     async def test_fetch_reel_delegates_to_fetch_post(self, mock_post_cls):
         """fetch_reel uses the same logic as fetch_post."""
         mock_post = MagicMock()

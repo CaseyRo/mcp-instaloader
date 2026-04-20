@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 import pytest
 
-from src.update_checker import (
+from mcp_instaloader.update_checker import (
     check_for_updates,
     get_installed_version,
     get_latest_version,
@@ -28,7 +28,7 @@ async def test_get_latest_version_success():
     mock_response.json.return_value = {"info": {"version": "4.11.0"}}
     mock_response.raise_for_status = MagicMock()
 
-    with patch("src.update_checker.httpx.AsyncClient") as mock_client:
+    with patch("mcp_instaloader.update_checker.httpx.AsyncClient") as mock_client:
         mock_client.return_value.__aenter__.return_value.get = AsyncMock(
             return_value=mock_response
         )
@@ -42,7 +42,7 @@ async def test_get_latest_version_success():
 @pytest.mark.asyncio
 async def test_get_latest_version_failure():
     """Test get_latest_version returns None on API failure."""
-    with patch("src.update_checker.httpx.AsyncClient") as mock_client:
+    with patch("mcp_instaloader.update_checker.httpx.AsyncClient") as mock_client:
         mock_client.return_value.__aenter__.return_value.get = AsyncMock(
             side_effect=httpx.RequestError("Network error")
         )
@@ -54,7 +54,7 @@ async def test_get_latest_version_failure():
 @pytest.mark.asyncio
 async def test_get_latest_version_timeout():
     """Test get_latest_version returns None on timeout."""
-    with patch("src.update_checker.httpx.AsyncClient") as mock_client:
+    with patch("mcp_instaloader.update_checker.httpx.AsyncClient") as mock_client:
         mock_client.return_value.__aenter__.return_value.get = AsyncMock(
             side_effect=httpx.TimeoutException("Timeout")
         )
@@ -71,7 +71,7 @@ async def test_get_latest_version_http_error():
         "Not found", request=MagicMock(), response=mock_response
     )
 
-    with patch("src.update_checker.httpx.AsyncClient") as mock_client:
+    with patch("mcp_instaloader.update_checker.httpx.AsyncClient") as mock_client:
         mock_client.return_value.__aenter__.return_value.get = AsyncMock(
             return_value=mock_response
         )
@@ -83,7 +83,7 @@ async def test_get_latest_version_http_error():
 def test_is_cache_valid_no_cache():
     """Test is_cache_valid returns False when no cache exists."""
     # Import and reset module-level cache
-    import src.update_checker as update_checker_module
+    import mcp_instaloader.update_checker as update_checker_module
 
     # Clear cache by setting to None
     update_checker_module._update_cache = None
@@ -94,7 +94,7 @@ def test_is_cache_valid_no_cache():
 
 def test_is_cache_valid_fresh_cache():
     """Test is_cache_valid returns True for fresh cache."""
-    import src.update_checker as update_checker_module
+    import mcp_instaloader.update_checker as update_checker_module
 
     # Set fresh cache (less than 1 day old)
     update_checker_module._update_cache = {
@@ -110,7 +110,7 @@ def test_is_cache_valid_fresh_cache():
 
 def test_is_cache_valid_expired_cache():
     """Test is_cache_valid returns False for expired cache."""
-    import src.update_checker as update_checker_module
+    import mcp_instaloader.update_checker as update_checker_module
 
     # Set expired cache (more than 1 day old)
     update_checker_module._update_cache = {
@@ -133,7 +133,7 @@ async def test_check_for_updates_response_structure():
     mock_response.json.return_value = {"info": {"version": "4.11.0"}}
     mock_response.raise_for_status = MagicMock()
 
-    with patch("src.update_checker.httpx.AsyncClient") as mock_client:
+    with patch("mcp_instaloader.update_checker.httpx.AsyncClient") as mock_client:
         mock_client.return_value.__aenter__.return_value.get = AsyncMock(
             return_value=mock_response
         )
@@ -161,7 +161,7 @@ async def test_check_for_updates_response_structure():
 @pytest.mark.asyncio
 async def test_check_for_updates_caching():
     """Test check_for_updates uses cache for subsequent calls."""
-    import src.update_checker as update_checker_module
+    import mcp_instaloader.update_checker as update_checker_module
 
     # Clear cache first
     update_checker_module._update_cache = None
@@ -171,7 +171,7 @@ async def test_check_for_updates_caching():
     mock_response.json.return_value = {"info": {"version": "4.11.0"}}
     mock_response.raise_for_status = MagicMock()
 
-    with patch("src.update_checker.httpx.AsyncClient") as mock_client:
+    with patch("mcp_instaloader.update_checker.httpx.AsyncClient") as mock_client:
         mock_get = AsyncMock(return_value=mock_response)
         mock_client.return_value.__aenter__.return_value.get = mock_get
 
@@ -188,7 +188,7 @@ async def test_check_for_updates_caching():
 @pytest.mark.asyncio
 async def test_check_for_updates_refreshes_after_expiry():
     """Test check_for_updates refreshes cache after expiry."""
-    import src.update_checker as update_checker_module
+    import mcp_instaloader.update_checker as update_checker_module
 
     # Set expired cache
     update_checker_module._update_cache = {
@@ -205,7 +205,7 @@ async def test_check_for_updates_refreshes_after_expiry():
     mock_response.json.return_value = {"info": {"version": "4.11.0"}}
     mock_response.raise_for_status = MagicMock()
 
-    with patch("src.update_checker.httpx.AsyncClient") as mock_client:
+    with patch("mcp_instaloader.update_checker.httpx.AsyncClient") as mock_client:
         mock_get = AsyncMock(return_value=mock_response)
         mock_client.return_value.__aenter__.return_value.get = mock_get
 
@@ -218,7 +218,7 @@ async def test_check_for_updates_refreshes_after_expiry():
 @pytest.mark.asyncio
 async def test_check_for_updates_update_available():
     """Test check_for_updates detects when update is available."""
-    import src.update_checker as update_checker_module
+    import mcp_instaloader.update_checker as update_checker_module
 
     # Clear cache
     update_checker_module._update_cache = None
@@ -228,13 +228,16 @@ async def test_check_for_updates_update_available():
     mock_response.json.return_value = {"info": {"version": "4.11.0"}}
     mock_response.raise_for_status = MagicMock()
 
-    with patch("src.update_checker.httpx.AsyncClient") as mock_client:
+    with patch("mcp_instaloader.update_checker.httpx.AsyncClient") as mock_client:
         mock_client.return_value.__aenter__.return_value.get = AsyncMock(
             return_value=mock_response
         )
 
         # Mock installed version to be different
-        with patch("src.update_checker.get_installed_version", return_value="4.10.0"):
+        with patch(
+            "mcp_instaloader.update_checker.get_installed_version",
+            return_value="4.10.0",
+        ):
             result = await check_for_updates()
             # Note: This test depends on actual installed version
             # The update_available flag will be True if versions differ
@@ -244,13 +247,13 @@ async def test_check_for_updates_update_available():
 @pytest.mark.asyncio
 async def test_check_for_updates_api_failure():
     """Test check_for_updates handles API failure gracefully."""
-    import src.update_checker as update_checker_module
+    import mcp_instaloader.update_checker as update_checker_module
 
     # Clear cache
     update_checker_module._update_cache = None
     update_checker_module._cache_timestamp = None
 
-    with patch("src.update_checker.httpx.AsyncClient") as mock_client:
+    with patch("mcp_instaloader.update_checker.httpx.AsyncClient") as mock_client:
         mock_client.return_value.__aenter__.return_value.get = AsyncMock(
             side_effect=httpx.RequestError("Network error")
         )
