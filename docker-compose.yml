@@ -10,6 +10,10 @@ services:
       MCP_PORT: ${MCP_PORT:-3336}
       COOKIE_FILE: ${COOKIE_FILE:-}
       MCP_API_KEY: ${MCP_API_KEY:-}
+      # In-memory cookie auth — operators paste a JSON blob of IG cookies
+      # from a logged-in browser's DevTools (Application → Storage →
+      # Cookies) here. See InstaloaderClient._inject_cookies_from_json.
+      INSTALOADER_SESSION_JSON: ${INSTALOADER_SESSION_JSON:-}
       TRANSPORT: http
       HOST: 0.0.0.0
       RATE_LIMIT_REQUESTS: ${RATE_LIMIT_REQUESTS:-10}
