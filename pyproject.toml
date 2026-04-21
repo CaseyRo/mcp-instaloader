@@ -1,6 +1,6 @@
 [project]
 name = "mcp-instaloader"
-version = "0.2.7"
+version = "0.2.8"
 description = "MCP server for fetching Instagram posts and reels using instaloader"
 readme = "README.md"
 license = {text = "MIT"}

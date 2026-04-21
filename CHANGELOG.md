@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.2.8] - 2026-04-21
+
+- feat(auth): accept INSTALOADER_SESSION_JSON env for in-memory cookies
+
+
 ## [0.2.7] - 2026-04-20
 
 - refactor(config): extract Settings with pydantic-settings, add tests
