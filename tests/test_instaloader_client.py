@@ -29,6 +29,57 @@ class TestInstaloaderClientInit:
         client = InstaloaderClient(cookie_file="/nonexistent/path/session")
         assert client._session_loaded is False
 
+
+class TestSessionJsonEnv:
+    """The INSTALOADER_SESSION_JSON path — cookies injected in-memory from env."""
+
+    _GOOD_BLOB = (
+        '{"csrftoken":"csrf-v","sessionid":"sid-v","ds_user_id":"42","mid":"m-v"}'
+    )
+
+    def test_cookies_are_injected(self, monkeypatch):
+        monkeypatch.setenv("INSTALOADER_SESSION_JSON", self._GOOD_BLOB)
+        client = InstaloaderClient()
+        assert client._session_loaded is True
+        jar = client.loader.context._session.cookies
+        assert jar["sessionid"] == "sid-v"
+        assert jar["csrftoken"] == "csrf-v"
+        assert jar["ds_user_id"] == "42"
+        assert jar["mid"] == "m-v"
+        # X-CSRFToken header mirrors what load_session_from_file does
+        assert client.loader.context._session.headers.get("X-CSRFToken") == "csrf-v"
+
+    def test_accepts_wrapper_shape_with_username(self, monkeypatch):
+        monkeypatch.setenv(
+            "INSTALOADER_SESSION_JSON",
+            '{"username":"bork","cookies":{"csrftoken":"c","sessionid":"s"}}',
+        )
+        client = InstaloaderClient()
+        assert client._session_loaded is True
+        assert client.loader.context.username == "bork"
+
+    def test_rejects_missing_required_cookies(self, monkeypatch):
+        # sessionid alone is not enough without csrftoken
+        monkeypatch.setenv("INSTALOADER_SESSION_JSON", '{"sessionid":"s"}')
+        client = InstaloaderClient()
+        assert client._session_loaded is False
+
+    def test_ignores_malformed_json(self, monkeypatch):
+        monkeypatch.setenv("INSTALOADER_SESSION_JSON", "{not json")
+        client = InstaloaderClient()
+        assert client._session_loaded is False
+
+    def test_empty_env_is_noop(self, monkeypatch):
+        monkeypatch.setenv("INSTALOADER_SESSION_JSON", "")
+        client = InstaloaderClient()
+        assert client._session_loaded is False
+
+    def test_env_takes_precedence_over_cookie_file(self, monkeypatch, tmp_path):
+        # Even with a nonexistent cookie_file arg, the env blob wins.
+        monkeypatch.setenv("INSTALOADER_SESSION_JSON", self._GOOD_BLOB)
+        client = InstaloaderClient(cookie_file=str(tmp_path / "nope"))
+        assert client._session_loaded is True
+
     @patch.object(InstaloaderClient, "_load_session")
     def test_init_calls_load_session_when_file_exists(self, mock_load):
         """Client attempts to load session when cookie file exists."""

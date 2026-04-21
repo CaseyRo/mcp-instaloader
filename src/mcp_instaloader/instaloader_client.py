@@ -1,6 +1,8 @@
 """Client wrapper for instaloader to fetch Instagram posts and reels."""
 
 import asyncio
+import json
+import logging
 import os
 from typing import Any
 
@@ -14,6 +16,13 @@ from instaloader.exceptions import (
 )
 
 from .url_parser import extract_shortcode, is_numeric_media_id
+
+logger = logging.getLogger(__name__)
+
+# Cookies the Instagram web client needs for an authenticated session.
+# Pulled in order of name-availability; `sessionid` + `csrftoken` are
+# load-bearing, the rest help IG's fingerprinting keep the session warm.
+_KNOWN_COOKIE_NAMES = ("csrftoken", "sessionid", "ds_user_id", "mid", "ig_did", "rur")
 
 
 def _post_to_dict(post: Post) -> dict[str, Any]:
@@ -52,24 +61,92 @@ class InstaloaderClient:
         """
         Initialize the Instaloader client.
 
+        Three auth paths, tried in order:
+          1. ``INSTALOADER_SESSION_JSON`` env — JSON blob of cookie name/value
+             pairs (``sessionid``, ``csrftoken``, etc.), injected directly
+             into the requests session. Operator pastes these once from a
+             logged-in browser's DevTools → Storage → Cookies panel.
+             Recommended for Komodo/Docker deployments — never touches disk.
+          2. ``cookie_file`` argument — path to an instaloader-native
+             pickle session file (created by ``instaloader --login``).
+             File-on-disk path, still supported for existing deployments.
+          3. No auth. Instagram will 401 on most graphql calls.
+
         Args:
-            cookie_file: Optional path to cookie file for authenticated sessions
+            cookie_file: Optional path to cookie file (path #2 above)
         """
         self.loader = instaloader.Instaloader()
         self.cookie_file = cookie_file
         self._session_loaded = False
 
-        # Load session from cookie file if provided
-        if cookie_file and os.path.exists(cookie_file):
+        session_json = os.getenv("INSTALOADER_SESSION_JSON", "").strip()
+        if session_json:
             try:
-                # Try to load session from file
-                # instaloader expects session files in a specific format
-                # For now, we'll handle this in a basic way
-                # In practice, users would need to export cookies in instaloader format
+                self._inject_cookies_from_json(session_json)
+            except Exception as e:
+                logger.warning("instaloader_session_json_invalid: %s", e)
+
+        if not self._session_loaded and cookie_file and os.path.exists(cookie_file):
+            try:
                 self._load_session(cookie_file)
             except Exception:
-                # If loading fails, continue without authentication
                 pass
+
+    def _inject_cookies_from_json(self, session_json: str) -> None:
+        """Parse an ``INSTALOADER_SESSION_JSON`` blob and set cookies on
+        the loader's internal requests.Session.
+
+        Accepts either a flat ``{cookie_name: value}`` object or a
+        ``{"cookies": {...}, "username": "..."}`` wrapper. The username
+        is optional — instaloader only uses it as a local label.
+        """
+        parsed = json.loads(session_json)
+        if isinstance(parsed, dict) and isinstance(parsed.get("cookies"), dict):
+            cookies = parsed["cookies"]
+            username = str(parsed.get("username") or "").strip() or None
+        elif isinstance(parsed, dict):
+            cookies = parsed
+            username = None
+        else:
+            raise ValueError(
+                "expected a JSON object (flat {name: value} or {cookies, username})"
+            )
+
+        if not cookies.get("sessionid") or not cookies.get("csrftoken"):
+            raise ValueError("sessionid and csrftoken are required")
+
+        jar = self.loader.context._session.cookies
+        # instaloader's default Instaloader() pre-populates the jar with
+        # empty placeholder cookies at no-domain — if we leave those in
+        # place, `jar['sessionid']` raises CookieConflictError. Clear any
+        # existing entry for a name we're about to set.
+        for name in _KNOWN_COOKIE_NAMES:
+            value = cookies.get(name)
+            if value is None:
+                continue
+            # `jar.clear(domain, path, name)` raises if missing; wrap each
+            # known-cookie clear so we can tolerate either the empty
+            # placeholder or a previously-set value being absent.
+            for dom in ("", ".instagram.com"):
+                try:
+                    jar.clear(dom, "/", name)
+                except KeyError:
+                    pass
+            jar.set(str(name), str(value), domain=".instagram.com", path="/")
+
+        # Mirror what instaloader's load_session_from_file does so the
+        # session is indistinguishable from a file-loaded one.
+        self.loader.context._session.headers.update(
+            {"X-CSRFToken": cookies["csrftoken"]}
+        )
+        if username:
+            self.loader.context.username = username
+        self._session_loaded = True
+        logger.info(
+            "instaloader_session_loaded_from_env keys=%s username=%s",
+            sorted(k for k in cookies if k in _KNOWN_COOKIE_NAMES),
+            username or "(unset)",
+        )
 
     def _load_session(self, cookie_file: str) -> None:
         """
