@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.2.9] - 2026-04-21
+
+- fix(compose): forward INSTALOADER_SESSION_JSON to the container
+
+
 ## [0.2.8] - 2026-04-21
 
 - feat(auth): accept INSTALOADER_SESSION_JSON env for in-memory cookies
