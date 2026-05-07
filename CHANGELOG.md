@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.2.10] - 2026-05-07
+
+- ops(docker): add log rotation (10m/3 files) to cap unbounded json-file logs
+
+
 ## [0.2.9] - 2026-04-21
 
 - fix(compose): forward INSTALOADER_SESSION_JSON to the container
