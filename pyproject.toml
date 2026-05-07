@@ -16,7 +16,7 @@ classifiers = [
 ]
 dependencies = [
     "fastmcp>=3.2.4",
-    "instaloader>=4.10",
+    "instaloader>=4.15.1",
     "python-dotenv>=1.0.0",
     "httpx>=0.28.0,<1.0.0",
     "PyJWT>=2.12.0",
